@@ -1,0 +1,38 @@
+openapi: 3.0.0
+info:
+  title: Your Flask Application API
+  version: 1.0.0
+paths:
+  /predict:
+    post:
+      summary: Endpoint to predict based on user input
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  output:
+                    type: string
+                  error:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
