@@ -1,6 +1,9 @@
 import requests
 import google.generativeai as genai
 from flask import Flask, request, jsonify
+from threading import Thread
+import time
+
 
 API_URL = "https://api-inference.huggingface.co/models/qanastek/XLMRoberta-Alexa-Intents-Classification"
 headers = {"Authorization": f"Bearer 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"}
@@ -15,7 +18,6 @@ output = query({
     "inputs": "I want to watch news",
 })
 
-print(output[0][0]['label'])
 
 genai.configure(api_key="AIzaSyBPqfvJxYg4Bvec0lgwmXBpxJN62_HCVQU")
 
@@ -49,8 +51,7 @@ safety_settings = [
 model = genai.GenerativeModel(model_name="gemini-pro",
                               generation_config=generation_config,
                               safety_settings=safety_settings)
-
-convo = model.start_chat(history=[
+dynamic_history = [
     {
         "role": "user",
         "parts": [
@@ -58,7 +59,7 @@ convo = model.start_chat(history=[
     },
     {
         "role": "model",
-        "parts": ["ok"]
+        "parts": ["Hello there! 😊 I'm WhisperBot, your compassionate companion. How can I support you today?"]
     },
     {
         "role": "user",
@@ -149,7 +150,29 @@ convo = model.start_chat(history=[
         "parts": [
             "It's understandable to feel this way after experiencing a traumatic event. Trusting others can be difficult, especially when you've been hurt. It's important to be kind and patient with yourself during this process. Building trust takes time. Try to focus on the people who have shown you genuine care and support. Remember, you're not alone in this, and it's okay to take things at your own pace."]
     },
-])
+    ]
+
+variable_to_watch = "dynamic_history"
+
+
+def watch_variable():
+    global variable_to_watch
+    while True:
+        print("Variable:", variable_to_watch)
+        print(dynamic_history)
+        time.sleep(10)  # Adjust the interval as needed
+
+
+# Start the monitoring thread
+monitor_thread = Thread(target=watch_variable)
+monitor_thread.start()
+
+
+def update_history(role, message):
+    dynamic_history.append({"role": role, "parts": [message]})
+
+
+convo = model.start_chat(history = dynamic_history)
 
 '''while True:
     user_input = input("User: ")
@@ -182,6 +205,7 @@ app = Flask(__name__)
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    global convo
     user_input = request.get_json()
     print(user_input)
     user_input = user_input["text"]
@@ -203,14 +227,16 @@ def predict():
     if found_keyword:
         response = jsonify({"error": "The model cannot do the task"})
     else:
+        update_history("user", user_input)
         convo.send_message(user_input)
         response = jsonify({"output": convo.last.text})
+        update_history("model", convo.last.text)
 
-    '''response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')'''
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
 
     return response
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
